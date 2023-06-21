@@ -1,0 +1,26 @@
+{
+  "format_version": 2,
+  "header": {
+    "description": "Made By: Lete114\nGithub: Lete114\nRepo: https://github.com/Lete114/minecraft-BE-Cut-tree-one-click",
+    "name": "Cut tree one click",
+    "uuid": "1c874d6e-707e-484e-9027-0efff2b048a6",
+    "version": [0, 0, 1],
+    "min_engine_version": [1, 20, 0]
+  },
+  "modules": [
+    {
+      "description": "JavaScript module code",
+      "language": "javascript",
+      "type": "script",
+      "uuid": "9717780a-c69f-4679-bbe6-dbf6dfcdd7de",
+      "version": [0, 0, 1],
+      "entry": "scripts/tree.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.3.0-beta"
+    }
+  ]
+}
