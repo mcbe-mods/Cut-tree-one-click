@@ -29,9 +29,7 @@ world.afterEvents.blockBreak.subscribe((e) => {
     // Skip the stripped log
     if (block.typeId.includes('stripped_')) continue
 
-    // As long as the unique identifier of the block ends with "_log"
-    // and is of the same type as the block currently destroyed by the player, the condition is met
-    if (block.typeId.endsWith('_log') && blockTypeId === block.typeId) {
+    if (/(_log|crimson_stem|warped_stem)$/.test(block.typeId) && blockTypeId === block.typeId) {
       // output: [1,2,3] => "1,2,3"
       const pos = [block.x, block.y, block.z].toString()
 
