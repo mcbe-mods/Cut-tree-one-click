@@ -1,8 +1,9 @@
-import { world, Block, EntityInventoryComponent } from '@minecraft/server'
+import { world, Block, EntityInventoryComponent, Dimension } from '@minecraft/server'
 
 world.afterEvents.blockBreak.subscribe((e) => {
   const currentBreakBlock = e.brokenBlockPermutation
   const blockTypeId = currentBreakBlock.type.id
+  const dimension = e.dimension
 
   const currentSlot = e.player.selectedSlot
   /** @type {EntityInventoryComponent} */
@@ -18,7 +19,7 @@ world.afterEvents.blockBreak.subscribe((e) => {
    */
   const set = new Set()
 
-  const stack = [...getBlockNear(e.block)]
+  const stack = [...filterLogBlock(getBlockNear(dimension, e.block))]
 
   // Iterative processing of proximity squares
   while (stack.length > 0) {
@@ -26,10 +27,8 @@ world.afterEvents.blockBreak.subscribe((e) => {
     const block = stack.pop()
 
     if (!block) continue
-    // Skip the stripped log
-    if (block.typeId.includes('stripped_')) continue
 
-    if (/(_log|crimson_stem|warped_stem)$/.test(block.typeId) && blockTypeId === block.typeId) {
+    if (blockTypeId === block.typeId) {
       // output: [1,2,3] => "1,2,3"
       const pos = [block.x, block.y, block.z].toString()
 
@@ -39,8 +38,7 @@ world.afterEvents.blockBreak.subscribe((e) => {
       set.add(pos)
 
       // Get the squares adjacent to the new wood to append to the iteration stack
-      const blockNear = getBlockNear(block)
-      stack.push(...blockNear)
+      stack.push(...filterLogBlock(getBlockNear(dimension, block)))
     }
   }
 
@@ -49,19 +47,36 @@ world.afterEvents.blockBreak.subscribe((e) => {
     const cmd = `setblock ${pos.replaceAll(',', ' ')} air destroy`
     e.player.runCommand(cmd)
   })
+})
 
-  /**
-   *
-   * @param { Block } block
-   * @param { number } [radius=1]
-   * @returns
-   */
-  function getBlockNear(block, radius = 1) {
-    const centerX = block.x
-    const centerY = block.y
-    const centerZ = block.z
+/**
+ *
+ * @param { Block[] } blocks
+ * @returns
+ */
+function filterLogBlock(blocks) {
+  const reg = /(_log|crimson_stem|warped_stem)$/
+  const logs = blocks.filter((block) => {
+    const typeId = block.typeId
+    if (typeId.includes('stripped_')) return false
+    if (reg.test(typeId)) return true
+  })
+  return logs
+}
 
-    /*
+/**
+ *
+ * @param { Dimension } dimension
+ * @param { Block } block
+ * @param { number } [radius=1]
+ * @returns
+ */
+function getBlockNear(dimension, block, radius = 1) {
+  const centerX = block.x
+  const centerY = block.y
+  const centerZ = block.z
+
+  /*
     Store a 3x3 list of square objects centered on the current square coordinates
 
     Top view: 0 is the current square, get the coordinates of all 1's
@@ -81,17 +96,16 @@ world.afterEvents.blockBreak.subscribe((e) => {
     111
     111
     */
-    const positions = []
+  const positions = []
 
-    for (let x = centerX - radius; x <= centerX + radius; x++) {
-      for (let y = centerY - radius; y <= centerY + radius; y++) {
-        for (let z = centerZ - radius; z <= centerZ + radius; z++) {
-          // Get the list of eligible cube objects
-          positions.push(e.dimension.getBlock({ x, y, z }))
-        }
+  for (let x = centerX - radius; x <= centerX + radius; x++) {
+    for (let y = centerY - radius; y <= centerY + radius; y++) {
+      for (let z = centerZ - radius; z <= centerZ + radius; z++) {
+        // Get the list of eligible cube objects
+        positions.push(dimension.getBlock({ x, y, z }))
       }
     }
-
-    return positions
   }
-})
+
+  return positions
+}
