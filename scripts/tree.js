@@ -1,7 +1,8 @@
 import { world, Block, EntityInventoryComponent } from '@minecraft/server'
 
 world.afterEvents.blockBreak.subscribe((e) => {
-  const blockTypeId = e.brokenBlockPermutation.type.id
+  const currentBreakBlock = e.brokenBlockPermutation
+  const blockTypeId = currentBreakBlock.type.id
 
   const currentSlot = e.player.selectedSlot
   /** @type {EntityInventoryComponent} */
@@ -25,6 +26,8 @@ world.afterEvents.blockBreak.subscribe((e) => {
     const block = stack.pop()
 
     if (!block) continue
+    // Skip the stripped log
+    if (block.typeId.includes('stripped_')) continue
 
     // As long as the unique identifier of the block ends with "_log"
     // and is of the same type as the block currently destroyed by the player, the condition is met
