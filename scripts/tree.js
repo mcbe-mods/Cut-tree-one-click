@@ -18,12 +18,15 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
   /** @type {EntityInventoryComponent} */
   const inventory = player.getComponent('inventory')
   const currentSlotItem = inventory.container.getItem(currentSlot)
+  const axeSlot = inventory.container.getSlot(currentSlot)
 
   // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
   if (!player.isSneaking || !currentSlotItem?.typeId.endsWith('_axe')) return
 
   // Determine if the current player is in survival mode, if not then no item durability is consumed
   const isSurvivalPlayer = dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
+
+  if (isSurvivalPlayer) axeSlot.lockMode = 'slot'
 
   /** @type {ItemDurabilityComponent} */
   const itemDurability = currentSlotItem.getComponent('minecraft:durability')
@@ -73,12 +76,13 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
       stack.push(...filterLogBlock(getBlockNear(dimension, _block)))
     }
   }
-  
+
   if (isSurvivalPlayer) {
     // Set axe damage level
     const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
     itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
     inventory.container.setItem(currentSlot, currentSlotItem)
+    axeSlot.lockMode = 'none'
   }
 })
 
