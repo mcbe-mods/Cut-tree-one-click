@@ -1,17 +1,38 @@
-import { world, Block, EntityInventoryComponent, Dimension } from '@minecraft/server'
+import {
+  world,
+  Block,
+  Dimension,
+  ItemStack,
+  EntityInventoryComponent,
+  ItemDurabilityComponent,
+  ItemEnchantsComponent,
+  MinecraftBlockTypes
+} from '@minecraft/server'
 
-world.afterEvents.blockBreak.subscribe((e) => {
+world.afterEvents.blockBreak.subscribe(async (e) => {
+  const { dimension, player, block } = e
   const currentBreakBlock = e.brokenBlockPermutation
   const blockTypeId = currentBreakBlock.type.id
-  const dimension = e.dimension
 
-  const currentSlot = e.player.selectedSlot
+  const currentSlot = player.selectedSlot
   /** @type {EntityInventoryComponent} */
-  const inventory = e.player.getComponent('inventory')
+  const inventory = player.getComponent('inventory')
   const currentSlotItem = inventory.container.getItem(currentSlot)
 
   // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
-  if (!e.player.isSneaking || !currentSlotItem.typeId.endsWith('_axe')) return
+  if (!player.isSneaking || !currentSlotItem?.typeId.endsWith('_axe')) return
+
+  // Determine if the current player is in survival mode, if not then no item durability is consumed
+  const isSurvivalPlayer = dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
+
+  /** @type {ItemDurabilityComponent} */
+  const itemDurability = currentSlotItem.getComponent('minecraft:durability')
+  /** @type {ItemEnchantsComponent} */
+  const enchantments = currentSlotItem.getComponent('minecraft:enchantments')
+  const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
+  // https://minecraft.fandom.com/wiki/Unbreaking
+  let itemMaxDamage = itemDurability.damage * (1 + unbreaking)
+  const itemMaxDurability = itemDurability.maxDurability * (1 + unbreaking)
 
   /**
    * Store all coordinates of the same wood type
@@ -19,34 +40,46 @@ world.afterEvents.blockBreak.subscribe((e) => {
    */
   const set = new Set()
 
-  const stack = [...filterLogBlock(getBlockNear(dimension, e.block))]
-
+  const stack = [...filterLogBlock(getBlockNear(dimension, block))]
   // Iterative processing of proximity squares
   while (stack.length > 0) {
     // Get from the last one (will modify the original array)
-    const block = stack.pop()
+    const _block = stack.shift()
 
-    if (!block) continue
+    if (!_block) continue
 
-    if (blockTypeId === block.typeId) {
+    if (blockTypeId === _block.typeId) {
       // output: [1,2,3] => "1,2,3"
-      const pos = [block.x, block.y, block.z].toString()
+      const pos = [_block.x, _block.y, _block.z].toString()
 
       // If the coordinates exist, skip this iteration and proceed to the next iteration
       if (set.has(pos)) continue
 
+      itemMaxDamage++
+      if (isSurvivalPlayer && itemMaxDamage >= itemMaxDurability) {
+        continue
+      }
+
+      // Asynchronous execution to reduce game lag and game crashes
+      await new Promise((resolve) => {
+        dimension.spawnItem(new ItemStack(_block.typeId), { x: _block.x, y: _block.y, z: _block.z })
+        _block.setType(MinecraftBlockTypes.get('minecraft:air'))
+        resolve()
+      })
+
       set.add(pos)
 
       // Get the squares adjacent to the new wood to append to the iteration stack
-      stack.push(...filterLogBlock(getBlockNear(dimension, block)))
+      stack.push(...filterLogBlock(getBlockNear(dimension, _block)))
     }
   }
-
-  // Iterate through all wood coordinates and execute the setblock command to destroy
-  set.forEach((pos) => {
-    const cmd = `setblock ${pos.replaceAll(',', ' ')} air destroy`
-    e.player.runCommand(cmd)
-  })
+  
+  if (isSurvivalPlayer) {
+    // Set axe damage level
+    const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
+    itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
+    inventory.container.setItem(currentSlot, currentSlotItem)
+  }
 })
 
 /**
