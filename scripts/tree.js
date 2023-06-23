@@ -5,7 +5,8 @@ import {
   ItemStack,
   EntityInventoryComponent,
   ItemDurabilityComponent,
-  ItemEnchantsComponent
+  ItemEnchantsComponent,
+  MinecraftBlockTypes
 } from '@minecraft/server'
 
 world.afterEvents.blockBreak.subscribe(async (e) => {
@@ -21,13 +22,15 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
   // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
   if (!player.isSneaking || !currentSlotItem?.typeId.endsWith('_axe')) return
 
-  const isSurvivalPlayer = dimension.getPlayers({ gameMode: 'survival' }).find((p) => p.name === player.name)
+  // Determine if the current player is in survival mode, if not then no item durability is consumed
+  const isSurvivalPlayer = dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
 
   /** @type {ItemDurabilityComponent} */
   const itemDurability = currentSlotItem.getComponent('minecraft:durability')
   /** @type {ItemEnchantsComponent} */
   const enchantments = currentSlotItem.getComponent('minecraft:enchantments')
   const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
+  // https://minecraft.fandom.com/wiki/Unbreaking
   let itemMaxDamage = itemDurability.damage * (1 + unbreaking)
   const itemMaxDurability = itemDurability.maxDurability * (1 + unbreaking)
 
@@ -38,7 +41,6 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
   const set = new Set()
 
   const stack = [...filterLogBlock(getBlockNear(dimension, block))]
-
   // Iterative processing of proximity squares
   while (stack.length > 0) {
     // Get from the last one (will modify the original array)
@@ -53,13 +55,17 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
       // If the coordinates exist, skip this iteration and proceed to the next iteration
       if (set.has(pos)) continue
 
+      itemMaxDamage++
       if (isSurvivalPlayer && itemMaxDamage >= itemMaxDurability) {
-        itemMaxDamage++
         continue
       }
 
-      const cmd = `setblock ${pos.replaceAll(',', ' ')} air destroy`
-      await player.runCommandAsync(cmd)
+      // Asynchronous execution to reduce game lag and game crashes
+      await new Promise((resolve) => {
+        dimension.spawnItem(new ItemStack(_block.typeId), { x: _block.x, y: _block.y, z: _block.z })
+        _block.setType(MinecraftBlockTypes.get('minecraft:air'))
+        resolve()
+      })
 
       set.add(pos)
 
@@ -67,9 +73,11 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
       stack.push(...filterLogBlock(getBlockNear(dimension, _block)))
     }
   }
-
+  
   if (isSurvivalPlayer) {
-    itemDurability.damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
+    // Set axe damage level
+    const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
+    itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
     inventory.container.setItem(currentSlot, currentSlotItem)
   }
 })
