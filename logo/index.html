@@ -1,62 +1,82 @@
 <style>
   @font-face {
-    font-family: "minecraft";
+    font-family: 'minecraft';
     src: url(./Minecraft_Evenings.ttf);
   }
   * {
+    padding: 0;
+    margin: 0;
     font-family: minecraft;
   }
 
   body {
+    width: 100%;
+    background-image: url(./background.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+    background-size: cover;
+    backdrop-filter: blur(8px);
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .container {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .title {
-    color: #00c4b6;
-    position: absolute;
-    top: 100;
-    left: 50%;
+    text-align: center;
+    color: #fff;
+
     width: 100%;
-    transform: translateX(-50%);
+
     font-size: 80;
     z-index: 100;
-    text-shadow: 1px 1px #006b64, 2px 2px #006b64, 3px 3px #006b64,
-      4px 4px #006b64, 5px 5px #006b64, 20px 20px 16px #000;
+    text-shadow: 1px 1px #aeaeae, 2px 2px #aeaeae, 3px 3px #aeaeae, 4px 4px #aeaeae, 5px 5px #aeaeae,
+      20px 20px 16px #000;
   }
-
-  .background {
+  .imgs {
+    margin-top: 40px;
+    /* display: flex;
+    align-items: center; */
+    position: relative;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: blur(8px);
+    height: 50vh;
   }
 
   .axe {
-    transform: scale(16) scaleX(-1) rotate(270deg);
+    transform: scale(14) scaleX(-1) rotate(270deg);
     image-rendering: pixelated;
     position: absolute;
-    top: 500;
-    left: 40%;
+    top: 60%;
+    left: 30%;
   }
   .oak_log_top {
-    transform: rotate(40deg);
+    transform: rotate(40deg) scale(0.9);
     position: absolute;
-    top: 100;
-    left: 40%;
+    top: -50%;
+    left: 20%;
   }
 
   .oak_log_bottom {
-    transform: scale(0.6) rotate(358deg);
+    transform: scale(0.4) rotate(358deg);
     position: absolute;
-    top: 500;
-    left: 40%;
+    top: 40%;
+    left: 30%;
   }
 </style>
 
-<div style="text-align: center">
+<div class="container">
   <div class="title">Cut tree one click</div>
-  <img src="./background.png" class="background" />
-  <img src="./iron_axe.png" class="axe" />
-  <img src="./oak_log_top.png" class="oak_log_top" />
-  <img src="./oak_log_bottom.png" class="oak_log_bottom" />
+  <div class="imgs">
+    <img src="./iron_axe.png" class="axe" />
+    <img src="./oak_log_top.png" class="oak_log_top" />
+    <img src="./oak_log_bottom.png" class="oak_log_bottom" />
+  </div>
 </div>
