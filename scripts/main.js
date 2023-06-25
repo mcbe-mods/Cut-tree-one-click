@@ -43,15 +43,18 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
    */
   const set = new Set()
 
-  const stack = [...filterLogBlock(getBlockNear(dimension, block))]
+  const stack = [...getBlockNear(dimension, block)]
   // Iterative processing of proximity squares
   while (stack.length > 0) {
     // Get from the last one (will modify the original array)
     const _block = stack.shift()
 
-    if (!_block) continue
+    if (!_block || _block?.typeId.includes('stripped_')) continue
 
-    if (blockTypeId === _block.typeId) {
+    const typeId = _block.typeId
+    const reg = /(_log|crimson_stem|warped_stem)$/
+
+    if (blockTypeId === typeId && reg.test(typeId)) {
       // output: [1,2,3] => "1,2,3"
       const pos = [_block.x, _block.y, _block.z].toString()
 
@@ -72,7 +75,7 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
       set.add(pos)
 
       // Get the squares adjacent to the new wood to append to the iteration stack
-      stack.push(...filterLogBlock(getBlockNear(dimension, _block)))
+      stack.push(...getBlockNear(dimension, _block))
     }
   }
 
@@ -103,21 +106,6 @@ function splitGroups(number, groupSize = 64) {
     number -= group
   }
   return groups
-}
-
-/**
- *
- * @param { Block[] } blocks
- * @returns
- */
-function filterLogBlock(blocks) {
-  const reg = /(_log|crimson_stem|warped_stem)$/
-  const logs = blocks.filter((block) => {
-    const typeId = block.typeId
-    if (typeId.includes('stripped_')) return false
-    if (reg.test(typeId)) return true
-  })
-  return logs
 }
 
 /**
