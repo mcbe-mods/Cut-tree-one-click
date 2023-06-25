@@ -8,9 +8,20 @@ Cutting trees in minecraft is really a waste of time
 
 ## Download
 
+To download, you need to go to the GitHub repository [releases](https://github.com/mcbe-mods/Cut-tree-one-click/releases)
+
+## Usage
+
 > required enable Beta API
 
-To download, you need to go to the GitHub repository [releases](https://github.com/Lete114/minecraft-BE-Cut-tree-one-click/releases)
+1. need an axe
+2. just cut the tree in the sneaking state
+   (Does not support peeled wood)
+   (Support axe in other mods, make sure the axe item id in other mods ends with \_axe)
+   (For wood in other mods, just make sure that the wood block ids in other mods end with \_log)
+   (Drains axe endurance, supports axes with enchanted endurance, stops cutting trees when axe endurance is reduced to 1 point)
+
+![](logo/tree.gif)
 
 ## Debugger
 
