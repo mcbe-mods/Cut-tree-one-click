@@ -65,7 +65,6 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
 
       // Asynchronous execution to reduce game lag and game crashes
       await new Promise((resolve) => {
-        dimension.spawnItem(new ItemStack(_block.typeId), { x: _block.x, y: _block.y, z: _block.z })
         _block.setType(MinecraftBlockTypes.get('minecraft:air'))
         resolve()
       })
@@ -77,6 +76,10 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
     }
   }
 
+  splitGroups(set.size).forEach((group) => {
+    dimension.spawnItem(new ItemStack(blockTypeId, group), block.location)
+  })
+
   if (isSurvivalPlayer) {
     // Set axe damage level
     const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
@@ -85,6 +88,22 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
     axeSlot.lockMode = 'none'
   }
 })
+
+/**
+ *
+ * @param {number} number
+ * @param {number} groupSize
+ * @returns
+ */
+function splitGroups(number, groupSize = 64) {
+  const groups = []
+  while (number > 0) {
+    const group = Math.min(number, groupSize)
+    groups.push(group)
+    number -= group
+  }
+  return groups
+}
 
 /**
  *
