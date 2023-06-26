@@ -6,7 +6,8 @@ import {
   EntityInventoryComponent,
   ItemDurabilityComponent,
   ItemEnchantsComponent,
-  MinecraftBlockTypes
+  MinecraftBlockTypes,
+  MinecraftItemTypes
 } from '@minecraft/server'
 
 /**
@@ -69,7 +70,6 @@ async function treeCut(player, dimension, location, blockTypeId) {
     const reg = /(_log|crimson_stem|warped_stem)$/
 
     if (reg.test(typeId) && typeId === blockTypeId) {
-      
       const pos = JSON.stringify(_block.location)
 
       // If the coordinates exist, skip this iteration and proceed to the next iteration
@@ -82,7 +82,7 @@ async function treeCut(player, dimension, location, blockTypeId) {
 
       // Asynchronous execution to reduce game lag and game crashes
       await new Promise((resolve) => {
-        _block.setType(MinecraftBlockTypes.get('minecraft:air'))
+        _block.setType(MinecraftBlockTypes.air)
         resolve()
       })
 
@@ -107,7 +107,7 @@ async function treeCut(player, dimension, location, blockTypeId) {
 
   set.forEach((pos) => {
     const location = JSON.parse(pos)
-    clearLeaves(dimension, location)
+    clearLeaves(dimension, location, blockTypeId)
   })
 }
 
@@ -115,10 +115,21 @@ async function treeCut(player, dimension, location, blockTypeId) {
  *
  * @param {Dimension} dimension
  * @param {Location} location
+ * @param {string} blockTypeId
  */
-async function clearLeaves(dimension, location) {
+async function clearLeaves(dimension, location, blockTypeId) {
   /** @type { Set<string> } */
   const set = new Set()
+
+  const [, log] = blockTypeId.split(':')
+
+  /**
+   * https://minecraft.fandom.com/wiki/Sapling?so=search#Data_values
+   * Because the sapling id of the bedrock version is only oak wood and cherry wood
+   * The other trees can't drop the corresponding saplings correctly after felling
+   * Therefore, at present, only the leaves of oak and cherry trees can be dropped quickly.
+   */
+  if (!['cherry_log', 'oak_log'].includes(log)) return
 
   const stack = [...getBlockNear(dimension, location, 2)]
   // Iterative processing of proximity squares
@@ -147,7 +158,30 @@ async function clearLeaves(dimension, location) {
 
       // Asynchronous execution to reduce game lag and game crashes
       await new Promise((resolve) => {
-        _block.setType(MinecraftBlockTypes.get('minecraft:air'))
+        _block.setType(MinecraftBlockTypes.air)
+
+        // Drop stick
+        const stick = simulateProbability(2)
+        if (stick) {
+          const stickCounter = Math.round(Math.random() + 1)
+          dimension.spawnItem(new ItemStack(MinecraftItemTypes.stick, stickCounter), location)
+        }
+
+        if (log === 'oak_log') {
+          // Drop apple
+          const apple = simulateProbability(0.5)
+          if (apple) dimension.spawnItem(new ItemStack(MinecraftItemTypes.apple), location)
+
+          // Drop sapling
+          const sapling = simulateProbability(5)
+          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.sapling), location)
+        }
+
+        // Drop sapling
+        if (log === 'cherry_log') {
+          const sapling = simulateProbability(5)
+          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.cherrySapling), location)
+        }
         resolve()
       })
 
