@@ -1,19 +1,35 @@
 import {
   world,
-  Block,
   Dimension,
   ItemStack,
+  Player,
   EntityInventoryComponent,
   ItemDurabilityComponent,
   ItemEnchantsComponent,
-  MinecraftBlockTypes
+  MinecraftBlockTypes,
+  MinecraftItemTypes
 } from '@minecraft/server'
+
+/**
+ * @typedef { {x: number; y: number; z: number} } Location
+ */
 
 world.afterEvents.blockBreak.subscribe(async (e) => {
   const { dimension, player, block } = e
   const currentBreakBlock = e.brokenBlockPermutation
   const blockTypeId = currentBreakBlock.type.id
+  treeCut(player, dimension, block.location, blockTypeId)
+})
 
+/**
+ *
+ * @param {Player} player
+ * @param {Dimension} dimension
+ * @param {Location} location
+ * @param {string} blockTypeId
+ * @returns
+ */
+async function treeCut(player, dimension, location, blockTypeId) {
   const currentSlot = player.selectedSlot
   /** @type {EntityInventoryComponent} */
   const inventory = player.getComponent('inventory')
@@ -23,10 +39,9 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
   // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
   if (!player.isSneaking || !currentSlotItem?.typeId.endsWith('_axe')) return
 
-  // Determine if the current player is in survival mode, if not then no item durability is consumed
-  const isSurvivalPlayer = dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
+  const survivalPlayer = isSurvivalPlayer(dimension, player)
 
-  if (isSurvivalPlayer) axeSlot.lockMode = 'slot'
+  if (survivalPlayer) axeSlot.lockMode = 'slot'
 
   /** @type {ItemDurabilityComponent} */
   const itemDurability = currentSlotItem.getComponent('minecraft:durability')
@@ -43,7 +58,80 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
    */
   const set = new Set()
 
-  const stack = [...filterLogBlock(getBlockNear(dimension, block))]
+  const stack = [...getBlockNear(dimension, location)]
+  // Iterative processing of proximity squares
+  while (stack.length > 0) {
+    // Get from the last one (will modify the original array)
+    const _block = stack.shift()
+
+    if (!_block || _block?.typeId.includes('stripped_')) continue
+
+    const typeId = _block.typeId
+    const reg = /(_log|crimson_stem|warped_stem)$/
+
+    if (reg.test(typeId) && typeId === blockTypeId) {
+      const pos = JSON.stringify(_block.location)
+
+      // If the coordinates exist, skip this iteration and proceed to the next iteration
+      if (set.has(pos)) continue
+
+      itemMaxDamage++
+      if (survivalPlayer && itemMaxDamage >= itemMaxDurability) {
+        continue
+      }
+
+      // Asynchronous execution to reduce game lag and game crashes
+      await new Promise((resolve) => {
+        _block.setType(MinecraftBlockTypes.air)
+        resolve()
+      })
+
+      set.add(pos)
+
+      // Get the squares adjacent to the new wood to append to the iteration stack
+      stack.push(...getBlockNear(dimension, _block.location))
+    }
+  }
+
+  splitGroups(set.size).forEach((group) => {
+    dimension.spawnItem(new ItemStack(blockTypeId, group), location)
+  })
+
+  if (survivalPlayer) {
+    // Set axe damage level
+    const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
+    itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
+    inventory.container.setItem(currentSlot, currentSlotItem)
+    axeSlot.lockMode = 'none'
+  }
+
+  set.forEach((pos) => {
+    const location = JSON.parse(pos)
+    clearLeaves(dimension, location, blockTypeId)
+  })
+}
+
+/**
+ *
+ * @param {Dimension} dimension
+ * @param {Location} location
+ * @param {string} blockTypeId
+ */
+async function clearLeaves(dimension, location, blockTypeId) {
+  /** @type { Set<string> } */
+  const set = new Set()
+
+  const [, log] = blockTypeId.split(':')
+
+  /**
+   * https://minecraft.fandom.com/wiki/Sapling?so=search#Data_values
+   * Because the sapling id of the bedrock version is only oak wood and cherry wood
+   * The other trees can't drop the corresponding saplings correctly after felling
+   * Therefore, at present, only the leaves of oak and cherry trees can be dropped quickly.
+   */
+  if (!['cherry_log', 'oak_log'].includes(log)) return
+
+  const stack = [...getBlockNear(dimension, location, 2)]
   // Iterative processing of proximity squares
   while (stack.length > 0) {
     // Get from the last one (will modify the original array)
@@ -51,43 +139,77 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
 
     if (!_block) continue
 
-    if (blockTypeId === _block.typeId) {
-      // output: [1,2,3] => "1,2,3"
-      const pos = [_block.x, _block.y, _block.z].toString()
+    const typeId = _block.typeId
+    const reg = /leaves/g
+
+    if (reg.test(typeId)) {
+      const isIncludesLog = getBlockNear(dimension, _block.location, 2).some((block) => {
+        const _typeId = block.typeId
+        if (_typeId.includes('stripped_')) return false
+        if (/_log$/.test(_typeId)) return true
+      })
+      // Leaves will not fall quickly if there is wood within a two-frame radius
+      if (isIncludesLog) continue
+
+      const pos = JSON.stringify(_block.location)
 
       // If the coordinates exist, skip this iteration and proceed to the next iteration
       if (set.has(pos)) continue
 
-      itemMaxDamage++
-      if (isSurvivalPlayer && itemMaxDamage >= itemMaxDurability) {
-        continue
-      }
-
       // Asynchronous execution to reduce game lag and game crashes
       await new Promise((resolve) => {
-        _block.setType(MinecraftBlockTypes.get('minecraft:air'))
+        _block.setType(MinecraftBlockTypes.air)
+
+        // Drop stick
+        const stick = simulateProbability(2)
+        if (stick) {
+          const stickCounter = Math.round(Math.random() + 1)
+          dimension.spawnItem(new ItemStack(MinecraftItemTypes.stick, stickCounter), location)
+        }
+
+        if (log === 'oak_log') {
+          // Drop apple
+          const apple = simulateProbability(0.5)
+          if (apple) dimension.spawnItem(new ItemStack(MinecraftItemTypes.apple), location)
+
+          // Drop sapling
+          const sapling = simulateProbability(5)
+          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.sapling), location)
+        }
+
+        // Drop sapling
+        if (log === 'cherry_log') {
+          const sapling = simulateProbability(5)
+          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.cherrySapling), location)
+        }
         resolve()
       })
 
       set.add(pos)
 
-      // Get the squares adjacent to the new wood to append to the iteration stack
-      stack.push(...filterLogBlock(getBlockNear(dimension, _block)))
+      stack.push(...getBlockNear(dimension, _block.location, 2))
     }
   }
+}
 
-  splitGroups(set.size).forEach((group) => {
-    dimension.spawnItem(new ItemStack(blockTypeId, group), block.location)
-  })
+/**
+ * Determine if the current player is in survival mode, if not then no item durability is consumed
+ * @param {Dimension} dimension
+ * @param {Player} player
+ * @returns
+ */
+function isSurvivalPlayer(dimension, player) {
+  return dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
+}
 
-  if (isSurvivalPlayer) {
-    // Set axe damage level
-    const damage = Math.ceil((itemMaxDamage * 1) / (1 + unbreaking))
-    itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
-    inventory.container.setItem(currentSlot, currentSlotItem)
-    axeSlot.lockMode = 'none'
-  }
-})
+/**
+ *
+ * @param {number} probability
+ * @returns
+ */
+function simulateProbability(probability) {
+  return Math.random() < probability / 100
+}
 
 /**
  *
@@ -107,30 +229,15 @@ function splitGroups(number, groupSize = 64) {
 
 /**
  *
- * @param { Block[] } blocks
- * @returns
- */
-function filterLogBlock(blocks) {
-  const reg = /(_log|crimson_stem|warped_stem)$/
-  const logs = blocks.filter((block) => {
-    const typeId = block.typeId
-    if (typeId.includes('stripped_')) return false
-    if (reg.test(typeId)) return true
-  })
-  return logs
-}
-
-/**
- *
  * @param { Dimension } dimension
- * @param { Block } block
+ * @param { Location } location
  * @param { number } [radius=1]
  * @returns
  */
-function getBlockNear(dimension, block, radius = 1) {
-  const centerX = block.x
-  const centerY = block.y
-  const centerZ = block.z
+function getBlockNear(dimension, location, radius = 1) {
+  const centerX = location.x
+  const centerY = location.y
+  const centerZ = location.z
 
   /*
     Store a 3x3 list of square objects centered on the current square coordinates
@@ -157,11 +264,12 @@ function getBlockNear(dimension, block, radius = 1) {
   for (let x = centerX - radius; x <= centerX + radius; x++) {
     for (let y = centerY - radius; y <= centerY + radius; y++) {
       for (let z = centerZ - radius; z <= centerZ + radius; z++) {
+        const _location = { x, y, z }
+        const _block = dimension.getBlock(_location)
         // Get the list of eligible cube objects
-        positions.push(dimension.getBlock({ x, y, z }))
+        positions.push(_block)
       }
     }
   }
-
   return positions
 }
