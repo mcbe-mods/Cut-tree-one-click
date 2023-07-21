@@ -9,6 +9,8 @@ import {
   MinecraftBlockTypes,
   MinecraftItemTypes
 } from '@minecraft/server'
+import { isSurvivalPlayer, simulateProbability, splitGroups, getBlockNear, getRandomRangeValue } from './utils'
+import { leavesMap } from './leaves'
 
 /**
  * @typedef { {x: number; y: number; z: number} } Location
@@ -107,29 +109,20 @@ async function treeCut(player, dimension, location, blockTypeId) {
 
   set.forEach((pos) => {
     const location = JSON.parse(pos)
-    clearLeaves(dimension, location, blockTypeId)
+    clearLeaves(dimension, player, location, blockTypeId)
   })
 }
 
 /**
  *
  * @param {Dimension} dimension
+ * @param {Player} player
  * @param {Location} location
  * @param {string} blockTypeId
  */
-async function clearLeaves(dimension, location, blockTypeId) {
+async function clearLeaves(dimension, player, location, blockTypeId) {
   /** @type { Set<string> } */
   const set = new Set()
-
-  const [, log] = blockTypeId.split(':')
-
-  /**
-   * https://minecraft.fandom.com/wiki/Sapling?so=search#Data_values
-   * Because the sapling id of the bedrock version is only oak wood and cherry wood
-   * The other trees can't drop the corresponding saplings correctly after felling
-   * Therefore, at present, only the leaves of oak and cherry trees can be dropped quickly.
-   */
-  if (!['cherry_log', 'oak_log'].includes(log)) return
 
   const stack = [...getBlockNear(dimension, location, 2)]
   // Iterative processing of proximity squares
@@ -139,7 +132,7 @@ async function clearLeaves(dimension, location, blockTypeId) {
 
     if (!_block) continue
 
-    const typeId = _block.typeId
+    const { typeId, permutation } = _block
     const reg = /leaves/g
 
     if (reg.test(typeId)) {
@@ -160,27 +153,30 @@ async function clearLeaves(dimension, location, blockTypeId) {
       await new Promise((resolve) => {
         _block.setType(MinecraftBlockTypes.air)
 
-        // Drop stick
-        const stick = simulateProbability(2)
-        if (stick) {
-          const stickCounter = Math.round(Math.random() + 1)
-          dimension.spawnItem(new ItemStack(MinecraftItemTypes.stick, stickCounter), location)
+        /** @type {'oak' | 'spruce' | 'birch' | 'jungle' | 'acacia' | 'dark_oak' | 'azalea_leaves' | 'azalea_leaves_flowered' | 'mangrove_leaves'} */
+        const leaf_type = permutation.getState('old_leaf_type') || permutation.getState('new_leaf_type') || typeId.split(':')[1]
+        const leafMap = leavesMap[leaf_type]
+
+        if (leafMap?.apple_probability && simulateProbability(leafMap.apple_probability)) {
+          const count = getRandomRangeValue(...leafMap.apple_count)
+          dimension.spawnItem(new ItemStack(MinecraftItemTypes.apple, count), location)
         }
 
-        if (log === 'oak_log') {
-          // Drop apple
-          const apple = simulateProbability(0.5)
-          if (apple) dimension.spawnItem(new ItemStack(MinecraftItemTypes.apple), location)
-
-          // Drop sapling
-          const sapling = simulateProbability(5)
-          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.sapling), location)
+        if (leafMap?.stick_probability && simulateProbability(leafMap.stick_probability)) {
+          const count = getRandomRangeValue(...leafMap.stick_count)
+          dimension.spawnItem(new ItemStack(MinecraftItemTypes.stick, count), location)
         }
 
-        // Drop sapling
-        if (log === 'cherry_log') {
-          const sapling = simulateProbability(5)
-          if (sapling) dimension.spawnItem(new ItemStack(MinecraftItemTypes.cherrySapling), location)
+        if (leafMap?.sapling_probability && simulateProbability(leafMap.sapling_probability)) {
+          const count = getRandomRangeValue(...leafMap.sapling_count)
+          const type = leafMap.type
+
+          if (isNaN(type)) {
+            dimension.spawnItem(new ItemStack(type, count), location)
+          } else {
+            const command = `give ${player.name} sapling ${count} ${type}`
+            dimension.runCommandAsync(command)
+          }
         }
         resolve()
       })
@@ -190,86 +186,4 @@ async function clearLeaves(dimension, location, blockTypeId) {
       stack.push(...getBlockNear(dimension, _block.location, 2))
     }
   }
-}
-
-/**
- * Determine if the current player is in survival mode, if not then no item durability is consumed
- * @param {Dimension} dimension
- * @param {Player} player
- * @returns
- */
-function isSurvivalPlayer(dimension, player) {
-  return dimension.getPlayers({ gameMode: 'survival' }).some((p) => p.name === player.name)
-}
-
-/**
- *
- * @param {number} probability
- * @returns
- */
-function simulateProbability(probability) {
-  return Math.random() < probability / 100
-}
-
-/**
- *
- * @param {number} number
- * @param {number} groupSize
- * @returns
- */
-function splitGroups(number, groupSize = 64) {
-  const groups = []
-  while (number > 0) {
-    const group = Math.min(number, groupSize)
-    groups.push(group)
-    number -= group
-  }
-  return groups
-}
-
-/**
- *
- * @param { Dimension } dimension
- * @param { Location } location
- * @param { number } [radius=1]
- * @returns
- */
-function getBlockNear(dimension, location, radius = 1) {
-  const centerX = location.x
-  const centerY = location.y
-  const centerZ = location.z
-
-  /*
-    Store a 3x3 list of square objects centered on the current square coordinates
-
-    Top view: 0 is the current square, get the coordinates of all 1's
-
-    First floor
-    111
-    111
-    111
-
-    Second layer
-    111
-    101
-    111
-
-    Third layer
-    111
-    111
-    111
-    */
-  const positions = []
-
-  for (let x = centerX - radius; x <= centerX + radius; x++) {
-    for (let y = centerY - radius; y <= centerY + radius; y++) {
-      for (let z = centerZ - radius; z <= centerZ + radius; z++) {
-        const _location = { x, y, z }
-        const _block = dimension.getBlock(_location)
-        // Get the list of eligible cube objects
-        positions.push(_block)
-      }
-    }
-  }
-  return positions
 }
