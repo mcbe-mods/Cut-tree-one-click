@@ -3,7 +3,7 @@
 Cutting trees in minecraft is really a waste of time
 
 <p align="center">
-<img src="pack_icon.png" style="width: 80%;">
+<img src="src/behavior_pack/pack_icon.png" style="width: 80%;">
 </p>
 
 ## Download

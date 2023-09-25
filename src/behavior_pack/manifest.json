@@ -1,8 +1,8 @@
 {
   "format_version": 2,
   "header": {
-    "description": "Made By: Lete114\nGithub Repo: https://github.com/mcbe-mods/Cut-tree-one-click",
-    "name": "Cut tree one click",
+    "description": "pack.description",
+    "name": "pack.name",
     "uuid": "1c874d6e-707e-484e-9027-0efff2b048a6",
     "version": [0, 0, 4],
     "min_engine_version": [1, 20, 0]
