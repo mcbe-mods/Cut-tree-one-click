@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import type {
   Dimension,
   Player,
@@ -160,8 +159,10 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = error as any
+    /* eslint-disable no-console */
     console.log('error', err)
     console.log('error.stack', err && err.stack)
     console.log('error.message', err && err.message)
+    /* eslint-enable no-console */
   }
 })
