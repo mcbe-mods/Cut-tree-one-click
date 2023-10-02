@@ -91,9 +91,11 @@ async function treeCut(location: Vector3, dimension: Dimension, logLocations: Ve
   })
 }
 
-function getLeavesLocations(dimension: Dimension, logLocations: Vector3[]) {
+// eslint-disable-next-line max-statements
+async function clearLeaves(dimension: Dimension, logLocations: Vector3[]) {
   const visited = new Set()
-  const leavesLocations: Vector3[] = []
+  const batchSize = 27 // Size of each batch
+  let counter = 0
 
   for (const logLocation of logLocations) {
     const locations = getRadiusRange(logLocation)
@@ -119,20 +121,21 @@ function getLeavesLocations(dimension: Dimension, logLocations: Vector3[]) {
         // eslint-disable-next-line max-depth
         if (isIncludesLog) continue
 
-        leavesLocations.push(location)
         locations.push(...getRadiusRange(block.location))
+
+        // eslint-disable-next-line max-depth
+        if (counter === batchSize) {
+          // Add a short delay to allow the event loop to execute the toggle
+          await new Promise<void>((resolve) => system.runTimeout(resolve))
+          counter = 0
+        }
+
+        counter++
+
+        const command = `setblock ${Object.values(location).join(' ')} air destroy`
+        dimension.runCommandAsync(command)
       }
     }
-  }
-
-  return leavesLocations.sort((a, b) => a.y - b.y)
-}
-
-// eslint-disable-next-line max-statements
-async function clearLeaves(dimension: Dimension, leavesLocations: Vector3[]) {
-  for (const location of leavesLocations) {
-    const command = `setblock ${Object.values(location).join(' ')} air destroy`
-    dimension.runCommand(command)
   }
 }
 
@@ -154,8 +157,7 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
 
     await treeCut(block.location, dimension, logLocations)
 
-    const leavesLocations = getLeavesLocations(dimension, logLocations)
-    await clearLeaves(dimension, leavesLocations)
+    clearLeaves(dimension, logLocations)
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = error as any

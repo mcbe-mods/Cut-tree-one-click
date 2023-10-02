@@ -25,7 +25,7 @@ To download, you need to go to the GitHub repository [releases](https://github.c
    
    (Drains axe endurance, supports axes with enchanted endurance, stops cutting trees when axe endurance is reduced to 1 point)
 
-![](logo/tree.gif)
+![](logo/animation.gif)
 
 ## Debugger
 
