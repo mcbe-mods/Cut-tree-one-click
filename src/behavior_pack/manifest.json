@@ -4,7 +4,7 @@
     "description": "pack.description",
     "name": "pack.name",
     "uuid": "1c874d6e-707e-484e-9027-0efff2b048a6",
-    "version": [1, 0, 1],
+    "version": [1, 0, 2],
     "min_engine_version": [1, 20, 0]
   },
   "modules": [
@@ -13,7 +13,7 @@
       "language": "javascript",
       "type": "script",
       "uuid": "9717780a-c69f-4679-bbe6-dbf6dfcdd7de",
-      "version": [1, 0, 1],
+      "version": [1, 0, 2],
       "entry": "scripts/main.js"
     }
   ],

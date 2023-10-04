@@ -26,6 +26,25 @@ const getPlayerAction = (player: Player) => {
   return player.isSneaking && currentSlotItem?.typeId.endsWith('_axe')
 }
 
+function isTree(dimension: Dimension, location: Vector3, currentBreakBlockTypeId: string) {
+  const _location = Object.assign({}, location)
+  let block: Block
+
+  do {
+    _location.y++
+    block = dimension.getBlock(_location)!
+    if (block.typeId.includes('leaves')) {
+      return true
+    }
+
+    if (block.typeId !== currentBreakBlockTypeId) {
+      return false
+    }
+  } while (block.typeId === currentBreakBlockTypeId)
+
+  return false
+}
+
 function consumeAxeDurability(player: Player, logLocations: Vector3[]) {
   const currentSlot = player.selectedSlot
   const inventory = player.getComponent('inventory') as EntityInventoryComponent
@@ -149,6 +168,9 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
 
     const action = getPlayerAction(player)
     if (!action) return
+
+    const _isTree = isTree(dimension, block.location, currentBreakBlockTypeId)
+    if (!_isTree) return
 
     const logLocations = getLogLocations(dimension, block.location, currentBreakBlockTypeId)
 
