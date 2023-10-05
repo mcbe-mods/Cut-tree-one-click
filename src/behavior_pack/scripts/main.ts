@@ -169,8 +169,11 @@ world.afterEvents.blockBreak.subscribe(async (e) => {
     const action = getPlayerAction(player)
     if (!action) return
 
-    const _isTree = isTree(dimension, block.location, currentBreakBlockTypeId)
-    if (!_isTree) return
+    // not acacia log
+    if (!currentBreakBlockTypeId.includes('acacia_log')) {
+      const _isTree = isTree(dimension, block.location, currentBreakBlockTypeId)
+      if (!_isTree) return
+    }
 
     const logLocations = getLogLocations(dimension, block.location, currentBreakBlockTypeId)
 
