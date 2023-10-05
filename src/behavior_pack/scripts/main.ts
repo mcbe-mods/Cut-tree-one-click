@@ -1,3 +1,4 @@
+import * as server from '@minecraft/server'
 import type {
   Dimension,
   Player,
@@ -5,10 +6,22 @@ import type {
   Vector3,
   Block,
   ItemDurabilityComponent,
-  ItemEnchantsComponent
+  ItemEnchantsComponent,
+  BlockBreakAfterEventSignal
 } from '@minecraft/server'
-import { world, ItemStack, MinecraftBlockTypes, system, GameMode, ItemLockMode } from '@minecraft/server'
+import { world, ItemStack, system, GameMode, ItemLockMode } from '@minecraft/server'
 import { splitGroups, getRadiusRange, calcGameTicks } from '@mcbe-mods/utils'
+
+/* ---------- Versions Adaptation ---------- */
+
+const airBlockTypeId = server.MinecraftBlockTypes ? server.MinecraftBlockTypes.air : 'air'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const afterEvents = ((world.afterEvents as any).playerBreakBlock ||
+  (world.afterEvents as any).blockBreak) as BlockBreakAfterEventSignal
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/* ---------- Versions Adaptation ---------- */
 
 function isSurvivalPlayer(dimension: Dimension, player: Player) {
   return dimension.getPlayers({ gameMode: GameMode.survival }).some((p) => p.name === player.name)
@@ -102,7 +115,8 @@ async function treeCut(location: Vector3, dimension: Dimension, logLocations: Ve
 
   for (const location of logLocations) {
     const block = dimension.getBlock(location) as Block
-    block.setType(MinecraftBlockTypes.air)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    block.setType(airBlockTypeId as any)
   }
 
   splitGroups(logLocations.length).forEach((group) => {
@@ -158,7 +172,7 @@ async function clearLeaves(dimension: Dimension, logLocations: Vector3[]) {
   }
 }
 
-world.afterEvents.blockBreak.subscribe(async (e) => {
+afterEvents.subscribe(async (e) => {
   try {
     const { dimension, player, block } = e
     const currentBreakBlock = e.brokenBlockPermutation
