@@ -1,11 +1,11 @@
 /* eslint-disable camelcase */
-import { existsSync, rmSync } from 'fs'
+import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { join } from 'path'
 import { spawnSync } from 'child_process'
 import chokidar from 'chokidar'
 import fse from 'fs-extra'
-const { copySync } = fse
+const { copySync, emptydirSync } = fse
 
 const { LOCALAPPDATA } = process.env
 const [game] = process.argv.slice(2)
@@ -33,12 +33,12 @@ function handler() {
   if (game === 'game') {
     if (existsSync(distBPPath)) {
       const path = join(development_behavior_packs, '_dev_behavior_pack')
-      rmSync(path, { force: true, recursive: true })
+      emptydirSync(path, { force: true, recursive: true })
       copySync(distBPPath, path)
     }
     if (existsSync(distRPPath)) {
       const path = join(development_resource_packs, '_dev_resource_pack')
-      rmSync(path, { force: true, recursive: true })
+      emptydirSync(path, { force: true, recursive: true })
       copySync(distRPPath, path)
     }
   }
