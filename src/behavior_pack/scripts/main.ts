@@ -40,13 +40,15 @@ const getPlayerAction = (player: Player) => {
 }
 
 function isTree(dimension: Dimension, location: Vector3, currentBreakBlockTypeId: string) {
+  const leaves = ['leaves', 'warped_wart_block', 'nether_wart_block']
+  const isLeaves = (typeId: string) => leaves.some((item) => typeId.includes(item))
   const _location = Object.assign({}, location)
   let block: Block
 
   do {
     _location.y++
     block = dimension.getBlock(_location)!
-    if (block.typeId.includes('leaves')) {
+    if (isLeaves(block.typeId)) {
       return true
     }
 
