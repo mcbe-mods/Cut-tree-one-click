@@ -1,15 +1,21 @@
 /* eslint-disable camelcase */
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 import crypto from 'crypto'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
+const gitignorePath = join(__dirname, '..', '.gitignore')
 const BPmanifestPath = join(__dirname, '..', 'src/behavior_pack/manifest.json')
 const RPmanifestPath = join(__dirname, '..', 'src/resource_pack/manifest.json')
 const BP_UUID = crypto.webcrypto.randomUUID()
 const RP_UUID = crypto.webcrypto.randomUUID()
+
+if (existsSync(gitignorePath)) {
+  const content = readFileSync(gitignorePath, 'utf-8').replace('manifest.json', '')
+  writeFileSync(gitignorePath, content)
+}
 
 if (!existsSync(BPmanifestPath)) {
   const BP_manifest_context = {
