@@ -1,4 +1,3 @@
-import * as server from '@minecraft/server'
 import type {
   Dimension,
   Player,
@@ -6,22 +5,10 @@ import type {
   Vector3,
   Block,
   ItemDurabilityComponent,
-  ItemEnchantsComponent,
-  BlockBreakAfterEventSignal
+  ItemEnchantsComponent
 } from '@minecraft/server'
 import { world, ItemStack, system, GameMode, ItemLockMode } from '@minecraft/server'
 import { splitGroups, getRadiusRange, calcGameTicks } from '@mcbe-mods/utils'
-
-/* ---------- Versions Adaptation ---------- */
-
-const airBlockTypeId = server.MinecraftBlockTypes ? server.MinecraftBlockTypes.air : 'air'
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const afterEvents = ((world.afterEvents as any).playerBreakBlock ||
-  (world.afterEvents as any).blockBreak) as BlockBreakAfterEventSignal
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
-/* ---------- Versions Adaptation ---------- */
 
 function isSurvivalPlayer(dimension: Dimension, player: Player) {
   return dimension.getPlayers({ gameMode: GameMode.survival }).some((p) => p.name === player.name)
@@ -39,23 +26,18 @@ const getPlayerAction = (player: Player) => {
   return player.isSneaking && currentSlotItem?.typeId.endsWith('_axe')
 }
 
-function isTree(dimension: Dimension, location: Vector3, currentBreakBlockTypeId: string) {
+function isTree(dimension: Dimension, locations: Vector3[]) {
   const leaves = ['leaves', 'warped_wart_block', 'nether_wart_block']
-  const isLeaves = (typeId: string) => leaves.some((item) => typeId.includes(item))
-  const _location = Object.assign({}, location)
-  let block: Block
+  for (const location of locations) {
+    const blocksLocation = getRadiusRange(location)
+    const is = blocksLocation.some((block) => {
+      const typeId = dimension.getBlock(block)?.typeId
+      if (!typeId) return false
 
-  do {
-    _location.y++
-    block = dimension.getBlock(_location)!
-    if (isLeaves(block.typeId)) {
-      return true
-    }
-
-    if (block.typeId !== currentBreakBlockTypeId) {
-      return false
-    }
-  } while (block.typeId === currentBreakBlockTypeId)
+      return leaves.some((item) => typeId.includes(item))
+    })
+    if (is) return true
+  }
 
   return false
 }
@@ -118,7 +100,7 @@ async function treeCut(location: Vector3, dimension: Dimension, logLocations: Ve
   for (const location of logLocations) {
     const block = dimension.getBlock(location) as Block
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    block.setType(airBlockTypeId as any)
+    block.setType('air')
   }
 
   splitGroups(logLocations.length).forEach((group) => {
@@ -174,7 +156,7 @@ async function clearLeaves(dimension: Dimension, logLocations: Vector3[]) {
   }
 }
 
-afterEvents.subscribe(async (e) => {
+world.afterEvents.playerBreakBlock.subscribe(async (e) => {
   try {
     const { dimension, player, block } = e
     const currentBreakBlock = e.brokenBlockPermutation
@@ -185,13 +167,10 @@ afterEvents.subscribe(async (e) => {
     const action = getPlayerAction(player)
     if (!action) return
 
-    // not acacia log
-    if (!currentBreakBlockTypeId.includes('acacia_log')) {
-      const _isTree = isTree(dimension, block.location, currentBreakBlockTypeId)
-      if (!_isTree) return
-    }
-
     const logLocations = getLogLocations(dimension, block.location, currentBreakBlockTypeId)
+
+    const _isTree = isTree(dimension, logLocations)
+    if (!_isTree) return
 
     const survivalPlayer = isSurvivalPlayer(dimension, player)
     if (survivalPlayer) consumeAxeDurability(player, logLocations)
