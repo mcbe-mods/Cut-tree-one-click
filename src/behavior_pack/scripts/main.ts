@@ -6,11 +6,12 @@ import {
   ItemLockMode,
   Dimension,
   Player,
-  EntityInventoryComponent,
   Vector3,
   Block,
   ItemDurabilityComponent,
-  ItemEnchantsComponent
+  ItemEnchantsComponent,
+  EntityEquippableComponent,
+  EquipmentSlot
 } from '@minecraft/server'
 import { splitGroups, getRadiusRange, calcGameTicks } from '@mcbe-mods/utils'
 
@@ -19,16 +20,10 @@ function isSurvivalPlayer(dimension: Dimension, player: Player) {
 }
 
 const isStrippedLog = (typeId: string) => typeId.includes('stripped_')
-const getPlayerInventory = (player: Player) => player.getComponent('inventory') as EntityInventoryComponent
-const getPlayerContainer = (player: Player) => getPlayerInventory(player).container!
-
-const getPlayerAction = (player: Player) => {
-  const currentSlot = player.selectedSlot
-  const currentSlotItem = getPlayerContainer(player).getItem(currentSlot)
-
-  // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
-  return player.isSneaking && currentSlotItem?.typeId.endsWith('_axe')
-}
+const getPlayerMainhand = (player: Player) =>
+  player.getComponent(EntityEquippableComponent.componentId)?.getEquipmentSlot(EquipmentSlot.Mainhand)
+// The player is not stalking or not holding an axe, one of the conditions is not met will end directly
+const getPlayerAction = (player: Player) => player.isSneaking && getPlayerMainhand(player)?.typeId?.endsWith('_axe')
 
 function isTree(dimension: Dimension, locations: Vector3[]) {
   const leaves = ['leaves', 'warped_wart_block', 'nether_wart_block']
@@ -47,28 +42,43 @@ function isTree(dimension: Dimension, locations: Vector3[]) {
 }
 
 function consumeAxeDurability(player: Player, logLocations: Vector3[]) {
-  const currentSlot = player.selectedSlot
-  const axeSlot = getPlayerContainer(player).getSlot(currentSlot)
-  axeSlot.lockMode = ItemLockMode.slot
-  const item = axeSlot.getItem() as ItemStack
-  const itemDurability = item.getComponent(ItemDurabilityComponent.componentId) as ItemDurabilityComponent
-  const enchantments = item.getComponent(ItemEnchantsComponent.componentId) as ItemEnchantsComponent
-  const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
-  // https://minecraft.fandom.com/wiki/Unbreaking
-  const itemMaxDamage = itemDurability.damage * (1 + unbreaking)
-  const itemMaxDurability = itemDurability.maxDurability * (1 + unbreaking)
-  const consumeItemMaxDamage = itemMaxDamage + logLocations.length
+  const mainHand = getPlayerMainhand(player)
 
-  const overproof = consumeItemMaxDamage >= itemMaxDurability ? consumeItemMaxDamage - itemMaxDurability : 0
-  if (overproof > 0) logLocations.splice(-overproof)
+  try {
+    if (!mainHand) return
 
-  // Set axe damage level
-  const damage = Math.ceil((consumeItemMaxDamage * 1) / (1 + unbreaking))
-  itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
-  getPlayerContainer(player).setItem(currentSlot, item)
-  system.runTimeout(() => {
-    axeSlot.lockMode = ItemLockMode.none
-  }, calcGameTicks(1000))
+    mainHand.lockMode = ItemLockMode.slot
+
+    const item = mainHand.getItem()
+
+    if (!item) return
+
+    const itemDurability = item.getComponent(ItemDurabilityComponent.componentId)
+    const enchantments = item.getComponent(ItemEnchantsComponent.componentId)
+
+    if (!enchantments || !itemDurability) return
+
+    const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
+    // https://minecraft.fandom.com/wiki/Unbreaking
+    const itemMaxDamage = itemDurability.damage * (1 + unbreaking)
+    const itemMaxDurability = itemDurability.maxDurability * (1 + unbreaking)
+    const consumeItemMaxDamage = itemMaxDamage + logLocations.length
+
+    const overproof = consumeItemMaxDamage >= itemMaxDurability ? consumeItemMaxDamage - itemMaxDurability : 0
+    if (overproof > 0) logLocations.splice(-overproof)
+
+    // Set axe damage level
+    const damage = Math.ceil((consumeItemMaxDamage * 1) / (1 + unbreaking))
+    itemDurability.damage = damage > itemDurability.maxDurability ? itemDurability.maxDurability : damage
+    mainHand.setItem(item)
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('tree cut error:', error)
+  } finally {
+    system.runTimeout(() => {
+      if (mainHand) mainHand.lockMode = ItemLockMode.none
+    }, calcGameTicks(1000))
+  }
 }
 
 function getLogLocations(dimension: Dimension, location: Vector3, currentBreakBlockTypeId: string) {
