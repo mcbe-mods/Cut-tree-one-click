@@ -1,4 +1,9 @@
-import type {
+import {
+  world,
+  ItemStack,
+  system,
+  GameMode,
+  ItemLockMode,
   Dimension,
   Player,
   EntityInventoryComponent,
@@ -7,7 +12,6 @@ import type {
   ItemDurabilityComponent,
   ItemEnchantsComponent
 } from '@minecraft/server'
-import { world, ItemStack, system, GameMode, ItemLockMode } from '@minecraft/server'
 import { splitGroups, getRadiusRange, calcGameTicks } from '@mcbe-mods/utils'
 
 function isSurvivalPlayer(dimension: Dimension, player: Player) {
@@ -16,7 +20,7 @@ function isSurvivalPlayer(dimension: Dimension, player: Player) {
 
 const isStrippedLog = (typeId: string) => typeId.includes('stripped_')
 const getPlayerInventory = (player: Player) => player.getComponent('inventory') as EntityInventoryComponent
-const getPlayerContainer = (player: Player) => getPlayerInventory(player).container
+const getPlayerContainer = (player: Player) => getPlayerInventory(player).container!
 
 const getPlayerAction = (player: Player) => {
   const currentSlot = player.selectedSlot
@@ -44,12 +48,11 @@ function isTree(dimension: Dimension, locations: Vector3[]) {
 
 function consumeAxeDurability(player: Player, logLocations: Vector3[]) {
   const currentSlot = player.selectedSlot
-  const inventory = player.getComponent('inventory') as EntityInventoryComponent
-  const axeSlot = inventory.container.getSlot(currentSlot)
+  const axeSlot = getPlayerContainer(player).getSlot(currentSlot)
   axeSlot.lockMode = ItemLockMode.slot
   const item = axeSlot.getItem() as ItemStack
-  const itemDurability = item.getComponent('minecraft:durability') as ItemDurabilityComponent
-  const enchantments = item.getComponent('minecraft:enchantments') as ItemEnchantsComponent
+  const itemDurability = item.getComponent(ItemDurabilityComponent.componentId) as ItemDurabilityComponent
+  const enchantments = item.getComponent(ItemEnchantsComponent.componentId) as ItemEnchantsComponent
   const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
   // https://minecraft.fandom.com/wiki/Unbreaking
   const itemMaxDamage = itemDurability.damage * (1 + unbreaking)
