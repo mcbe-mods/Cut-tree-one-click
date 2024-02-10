@@ -9,7 +9,7 @@ import {
   Vector3,
   Block,
   ItemDurabilityComponent,
-  ItemEnchantsComponent,
+  ItemEnchantableComponent,
   EntityEquippableComponent,
   EquipmentSlot
 } from '@minecraft/server'
@@ -54,11 +54,11 @@ function consumeAxeDurability(player: Player, logLocations: Vector3[]) {
     if (!item) return
 
     const itemDurability = item.getComponent(ItemDurabilityComponent.componentId)
-    const enchantments = item.getComponent(ItemEnchantsComponent.componentId)
+    const enchantments = item.getComponent(ItemEnchantableComponent.componentId)
 
     if (!enchantments || !itemDurability) return
 
-    const unbreaking = enchantments.enchantments.hasEnchantment('unbreaking')
+    const unbreaking = enchantments.hasEnchantment('unbreaking') && enchantments.getEnchantment('unbreaking')?.level || 0
     // https://minecraft.fandom.com/wiki/Unbreaking
     const itemMaxDamage = itemDurability.damage * (1 + unbreaking)
     const itemMaxDurability = itemDurability.maxDurability * (1 + unbreaking)
