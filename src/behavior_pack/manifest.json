@@ -5,7 +5,7 @@
     "name": "pack.name",
     "uuid": "1c874d6e-707e-484e-9027-0efff2b048a6",
     "version": [1, 0, 7],
-    "min_engine_version": [1, 20, 50]
+    "min_engine_version": [1, 20, 60]
   },
   "modules": [
     {
@@ -20,7 +20,7 @@
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "1.8.0-beta"
+      "version": "1.9.0-beta"
     }
   ]
 }
