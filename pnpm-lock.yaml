@@ -11,8 +11,8 @@ dependencies:
 
 devDependencies:
   '@minecraft/server':
-    specifier: 1.9.0-beta.1.20.60-stable
-    version: 1.9.0-beta.1.20.60-stable
+    specifier: 1.10.0-beta.1.20.70-stable
+    version: 1.10.0-beta.1.20.70-stable
   '@rollup/plugin-node-resolve':
     specifier: ^15.1.0
     version: 15.1.0(rollup@3.27.0)
@@ -126,23 +126,23 @@ packages:
   /@mcbe-mods/utils@0.1.1:
     resolution: {integrity: sha512-mXGzkyDUqS6IKDhOhW1l+OF0bQtW+U6bb+RcOZwX/H70Tbh6Ro0C4ZifihMLHUqo5lOcmvok0vjkuYJ+NQSMGQ==}
     dependencies:
-      '@minecraft/server': 1.8.0
+      '@minecraft/server': 1.9.0
     dev: false
 
   /@minecraft/common@1.1.0:
     resolution: {integrity: sha512-stbUtINCXbcLNRlGNVX68xRC6ZYq3k3CYmfptwrCcPBEUjVOpVkSj3H4Y0qiSYB+1rVWv7DgiP7Uf9++50Ne5g==}
 
-  /@minecraft/server@1.8.0:
-    resolution: {integrity: sha512-YqH8eowsC2eAaJ/EXgUC+zfyo+iWa0jTCuLC/2zEpObg6nCJRjy0NIhIZqzxspbUOgf+qakNjNZIhLMwL+a6Fg==}
-    dependencies:
-      '@minecraft/common': 1.1.0
-    dev: false
-
-  /@minecraft/server@1.9.0-beta.1.20.60-stable:
-    resolution: {integrity: sha512-HmqmaQzX/SE2Q4yVezlLn/wc/cthts+4CEenFq5+YUFpXJ0fYV+LJ3GBvskWcRymNimoroP9D3R8WQXdpTnaKw==}
+  /@minecraft/server@1.10.0-beta.1.20.70-stable:
+    resolution: {integrity: sha512-LzF4F42BXeFbwdmD8CAEzMwYWtxMJUI/WFhZxyJB5nMLgjthhiTVPQ4aq0jIVyitD/w4afQ62/1xe0V7Qc6eHw==}
     dependencies:
       '@minecraft/common': 1.1.0
     dev: true
+
+  /@minecraft/server@1.9.0:
+    resolution: {integrity: sha512-PhOLfCYM83t24TY3+8WA5zCRGCyG/89VC6ZSi4Ye92QZORC/0Td5JIh2ctJtUhAiYCbct/Ph/Of3BCi8/itr6A==}
+    dependencies:
+      '@minecraft/common': 1.1.0
+    dev: false
 
   /@nodelib/fs.scandir@2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
