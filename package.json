@@ -16,7 +16,7 @@
     "lint:fix": "eslint --fix src && prettier --check --write src"
   },
   "devDependencies": {
-    "@minecraft/server": "1.10.0-beta.1.20.70-stable",
+    "@minecraft/server": "1.11.0-beta.1.20.80-stable",
     "@rollup/plugin-node-resolve": "^15.1.0",
     "@rollup/plugin-typescript": "^11.1.2",
     "@types/fs-extra": "^11.0.1",
