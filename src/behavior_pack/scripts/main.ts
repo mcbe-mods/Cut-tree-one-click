@@ -20,10 +20,14 @@ function isSurvivalPlayer(dimension: Dimension, player: Player) {
 }
 
 const isStrippedLog = (typeId: string) => typeId.includes('stripped_')
-const getPlayerMainhand = (player: Player) =>
-  player.getComponent(EntityEquippableComponent.componentId)?.getEquipmentSlot(EquipmentSlot.Mainhand)
+const getPlayerMainhand = (player: Player) => {
+  const entityEquippableComponent = player.getComponent(
+    EntityEquippableComponent.componentId
+  ) as EntityEquippableComponent
+  return entityEquippableComponent.getEquipmentSlot(EquipmentSlot.Mainhand)
+}
 // The player is not stalking or not holding an axe, one of the conditions is not met will end directly
-const getPlayerAction = (player: Player) => player.isSneaking && getPlayerMainhand(player)?.typeId?.endsWith('_axe')
+const getPlayerAction = (player: Player) => player.isSneaking && getPlayerMainhand(player)?.hasTag('is_axe')
 
 function isTree(dimension: Dimension, locations: Vector3[]) {
   const leaves = ['leaves', 'warped_wart_block', 'nether_wart_block']
@@ -53,8 +57,8 @@ function consumeAxeDurability(player: Player, logLocations: Vector3[]) {
 
     if (!item) return
 
-    const itemDurability = item.getComponent(ItemDurabilityComponent.componentId)
-    const enchantments = item.getComponent(ItemEnchantableComponent.componentId)
+    const itemDurability = item.getComponent(ItemDurabilityComponent.componentId) as ItemDurabilityComponent
+    const enchantments = item.getComponent(ItemEnchantableComponent.componentId) as ItemEnchantableComponent
 
     if (!enchantments || !itemDurability) return
 
